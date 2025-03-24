@@ -4,7 +4,7 @@ import sys
 import time
 
 def runExample():
-    print("\nQwiic OTOS Example 1 - Basic Readings\n")
+    print("\nQwiic OTOS Example 2 - Set Units\n")
 
     # Create instance of device
     myOtos = qwiic_otos.QwiicOTOS()
@@ -28,6 +28,14 @@ def runExample():
     # Calibrate the IMU, which removes the accelerometer and gyroscope offsets
     myOtos.calibrateImu()
 
+    # Set the desired units for linear and angular measurements. Can be either
+    # meters or inches for linear, and radians or degrees for angular. If not
+    # set, the default is inches and degrees. Note that this setting is not
+    # stored in the sensor, it's part of the library, so you need to set at the
+    # start of all your programs.
+    myOtos.setLinearUnit(myOtos.kLinearUnitMeters)
+    myOtos.setAngularUnit(myOtos.kAngularUnitDegrees)
+
     # Reset the tracking algorithm - this resets the position to the origin,
     # but can also be used to recover from some rare tracking errors
     myOtos.resetTracking()
@@ -41,17 +49,12 @@ def runExample():
         # Print measurement
         print()
         print("Position:")
-        print("X (Inches): {}".format(myPosition.x))
-        print("Y (Inches): {}".format(myPosition.y))
-        print("Heading (Degrees): {}".format(myPosition.h))
+        print("X (Meters): {}".format(myPosition.x))
+        print("Y (Meters): {}".format(myPosition.y))
+        print("Heading (Radians): {}".format(myPosition.h))
 
         # Wait a bit so we don't spam the serial port
         time.sleep(0.5)
-
-        # Alternatively, you can comment out the print and delay code above, and
-        # instead use the following code to rapidly refresh the data
-        # print("{}\t{}\t{}".format(myPosition.x, myPosition.y, myPosition.h))
-        # time.sleep(0.01)
 
 if __name__ == '__main__':
     try:
