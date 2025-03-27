@@ -1,6 +1,5 @@
 from simple_pid import PID
 import time
-
 pid = PID(0.8, 0.1, 0.05)
 initial = 0
 while True:

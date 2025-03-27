@@ -3,6 +3,8 @@ import qwiic_otos
 import sys
 import time
 
+heading = 0
+
 def runExample():
     print("\nQwiic OTOS Example 2 - Set Units\n")
 
@@ -19,7 +21,7 @@ def runExample():
     myOtos.begin()
 
     print("Ensure the OTOS is flat and stationary during calibration!")
-    for i in range(5, 0, -1):
+    for i in range(1, 0, -1):
         print("Calibrating in %d seconds..." % i)
         time.sleep(1)
 
@@ -46,15 +48,16 @@ def runExample():
         # the heading angle
         myPosition = myOtos.getPosition()
 
+        heading = -myPosition.h
         # Print measurement
         print()
         print("Position:")
         print("X (Meters): {}".format(myPosition.x))
         print("Y (Meters): {}".format(myPosition.y))
-        print("Heading (Radians): {}".format(myPosition.h))
+        print("Heading (Degrees): ", heading)
 
         # Wait a bit so we don't spam the serial port
-        time.sleep(0.5)
+        time.sleep(0.01)
 
 if __name__ == '__main__':
     try:
