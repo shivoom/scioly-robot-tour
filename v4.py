@@ -27,7 +27,7 @@ def initialization():
     return odo, rightmotor, leftmotor
 odo, rightmotor, leftmotor = initialization()
 
-def goalcalc(goalx, goaly):
+def goalcalc(goalx, goaly, heading):
     myPosition = odo.getPosition()
     # Forward is positive x, left is positive y (so invert). Multiplied by 100 to convert from meters to centimeters
     xdisp = goalx + myPosition.y*100
@@ -53,17 +53,25 @@ def goalcalc(goalx, goaly):
         goalheading = -math.degrees(math.atan(abs(xdisp/ydisp)))
     if xdisp < 0 and ydisp < 0:
         goalheading = -90 - math.degrees(math.atan(abs(ydisp/xdisp)))
+
+    if abs(heading - goalheading) > 180:
+        if heading > 0:
+            goalheading = goalheading + 360
+        if heading < 0:
+            goalheading = goalheading - 360
+    
+    # Extra tests for if the goal heading should be over 180 or under -180
+
     #print("calculated xdisp: ", xdisp)
     #print("calculated ydisp: ", ydisp)
     #print("calculated goalheading: ", goalheading)
     return goalheading, xdisp, ydisp
 
-def linearcontrol(goalx, goaly, goalheading):
+def linearcontrol(goalx, goaly, goalheading, heading):
     myPosition = odo.getPosition()
     currentx = -myPosition.y*100
     currenty = myPosition.x*100
     print("Location: ", currentx, " ", currenty)
-    heading = -myPosition.h
     displacement = math.dist((goalx, goaly), (currentx, currenty))
     
     # Slows linear speed when pointing the wrong way
@@ -71,6 +79,10 @@ def linearcontrol(goalx, goaly, goalheading):
         directioncorrect = 1
     elif abs(goalheading - heading) >= 15:
         directioncorrect = 1 / abs(goalheading - heading)
+    print(goalheading)
+    print(heading)
+    print("abs goal - current heading: ", abs(goalheading - heading))
+    print("Directioncorrect: ", directioncorrect)
     
     # Slows down on approach to goal point
     if displacement < 10:
@@ -82,14 +94,71 @@ def linearcontrol(goalx, goaly, goalheading):
     linearspeed = 5 + 35*directioncorrect*closeslowdown
     return linearspeed, displacement
 
-def goto(goalx, goaly):
+def rotate(absheading):
     while True:
         myPosition = odo.getPosition()
         heading = -myPosition.h
-        goalheading, xdisp, ydisp = goalcalc(goalx, goaly)
+        goalheading = absheading
+        # Compute new output from the PID according to the system's current value
+        pidturn.setpoint = goalheading
+        #print("linearspeed: ", linearspeed)
+        # Slows down on approach to goal point
+        if abs(goalheading - heading) < 30:
+            closeslowdown = ((abs(goalheading - heading))/ 75)
+        else:
+            closeslowdown = 1
+        controlright = (0.75 * pidturn(heading) * closeslowdown)
+        controlleft = (0.75 * pidturn(heading) * closeslowdown)
+        if controlleft > 100:
+            #print("control left was too big! ", controlleft)
+            controlleft = 100    
+        if controlleft < -100:
+            controlleft = -100
+            #print("control left was too small! ", controlleft)
+        if controlright > 100:
+            #print("control right was too big! ", controlright)
+            controlright = 100
+        if controlright < -100:
+            #print("control right was too small! ", controlright)
+            controlright = -100
+        #print("Current:", heading, " degrees")
+        #print("Goal: ", goalheading, " degrees")
+        #print("Pid value: ", pid(heading))
+        leftmotor.start(controlleft)
+        rightmotor.start(controlright)
+        #print("Displacement ", displacement)
+        if abs(goalheading - heading) < 1:
+            break
+        time.sleep(0.002)
+
+def goto(goalx, goaly):
+    wentneg = False
+    wentpos = False
+    while True:
+        myPosition = odo.getPosition()
+        preheading = -myPosition.h
+        # Creates a relative heading that can be > 180 or < -180 for the PID loop to use in error calculations
+        if wentneg == False and wentpos == False:
+            if preheading < -178:
+                wentneg = True
+            elif preheading > 178:
+                wentpos = True
+            else:
+                heading = preheading
+        if wentneg == True:
+            if preheading < 0:
+                heading = preheading
+            elif preheading > 0:
+                heading = preheading - 360
+        if wentpos == True:
+            if preheading > 0:
+                heading = preheading
+            elif preheading < 0:
+                heading = preheading + 360
+        goalheading, xdisp, ydisp = goalcalc(goalx, goaly, heading)
         # Compute new output from the PID according to the system's current value
         pid.setpoint = goalheading
-        linearspeed, displacement = linearcontrol(goalx, goaly, goalheading)
+        linearspeed, displacement = linearcontrol(goalx, goaly, goalheading, heading)
         #print("linearspeed: ", linearspeed)
         # Slows down on approach to goal point
         if displacement < 10:
@@ -110,7 +179,7 @@ def goto(goalx, goaly):
         if controlright < -100:
             #print("control right was too small! ", controlright)
             controlright = -100
-       # print("Current:", heading, " degrees")
+        print("Current:", heading, " degrees")
         #print("Goal: ", goalheading, " degrees")
         #print("Pid value: ", pid(heading))
         leftmotor.start(controlleft)
@@ -123,9 +192,18 @@ def goto(goalx, goaly):
 time.sleep(1)
 # PID Attempt one: 0.22, 0.01, 0.3 Best Coords: (50, 49)
 pid = PID(0.4, 0.02, 0.2)
-goto(0, 75)
-print(" ")
-print(" ")
-print(" ")
-print("end of goto 1")
+pidturn = PID(0.4, 0.02, 0.2)
 goto(0, 25)
+goto(50, 25)
+goto(50, 175)
+rotate(180)
+goto(50, 75)
+goto(0, 75)
+goto(-100, 125)
+goto(-150, 125)
+goto(-150, 25)
+rotate(0)
+goto(-150, 175)
+goto(-2,175)
+
+
