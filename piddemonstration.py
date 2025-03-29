@@ -1,6 +1,6 @@
 from simple_pid import PID
 import time
-pid = PID(0.8, 0.1, 0.05)
+pid = PID(1, 0, 0)
 initial = 0
 while True:
     # Compute new output from the PID according to the systems current value

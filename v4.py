@@ -3,6 +3,18 @@ import qwiic_otos
 import time
 import math
 from buildhat import Motor
+
+
+pid = PID(0.4, 0.02, 0.2)
+pidturn = PID(0.4, 0.02, 0.2)
+pidtime = PID(0.2, 0, 0)
+starttime = time.perf_counter()
+goaltime = 59
+currentpos = 0
+checkpoints = [(0,25), (50, 25), (50, 175), 180, (50,75), (0,75), (-100, 125), (-150, 125), (-150, 25), 0, (-150, 175), (-2, 175)]
+for i in range(len(checkpoints)):
+    totaldistance = math.dist(checkpoints[i], checkpoints[i +1])
+
 # Initialize motors:
 def initialization():
     leftmotor = Motor('A')
@@ -131,6 +143,20 @@ def rotate(absheading):
             break
         time.sleep(0.002)
 
+def timer(adddisp):
+    global totaldistance, pidtime
+    timeelapsed = (time.perf_counter() - starttime)
+    timeleft = goaltime - timeelapsed
+    currentgoalposition = (totaldistance / goaltime) * timeelapsed
+    currentdisp = currentpos + adddisp
+    pidtime.setpoint = currentgoalposition
+    timemult = pidtime(currentdisp)
+    if timemult > 1:
+        timemult = 1
+    elif timemult < 0:
+        timemult = 0.2
+    return timemult
+
 def goto(goalx, goaly):
     wentneg = False
     wentpos = False
@@ -157,6 +183,7 @@ def goto(goalx, goaly):
                 heading = preheading + 360
         goalheading, xdisp, ydisp = goalcalc(goalx, goaly, heading)
         # Compute new output from the PID according to the system's current value
+        global pid
         pid.setpoint = goalheading
         linearspeed, displacement = linearcontrol(goalx, goaly, goalheading, heading)
         #print("linearspeed: ", linearspeed)
@@ -165,8 +192,10 @@ def goto(goalx, goaly):
             closeslowdownturn = (displacement / 8)
         elif displacement >= 10:
             closeslowdownturn = 1
-        controlright = (1 * pid(heading) * closeslowdownturn) - (1 * linearspeed)
-        controlleft = (1 * pid(heading) * closeslowdownturn) + (1 * linearspeed)
+        # Time management multiplier
+        timemult = timer(math.dist((0,0), (goalx, goaly)) - (math.dist((0,0), (xdisp, ydisp))))
+        controlright = timemult * (1 * pid(heading) * closeslowdownturn) - (1 * linearspeed)
+        controlleft = timemult * (1 * pid(heading) * closeslowdownturn) + (1 * linearspeed)
         if controlleft > 100:
             #print("control left was too big! ", controlleft)
             controlleft = 100    
@@ -186,24 +215,21 @@ def goto(goalx, goaly):
         rightmotor.start(controlright)
         #print("Displacement ", displacement)
         if displacement < 2:
+            # Add distance traveled for time function...
+            global currentpos
+            currentpos = currentpos + math.dist((0,0), (goalx, goaly))
             break
         time.sleep(0.002)
+        
+# Actually move
+for i in range(len(checkpoints)):
+    if type(i) == int:
+        rotate(i)
+    else:
+        goto(i)
 
-time.sleep(1)
-# PID Attempt one: 0.22, 0.01, 0.3 Best Coords: (50, 49)
-pid = PID(0.4, 0.02, 0.2)
-pidturn = PID(0.4, 0.02, 0.2)
-goto(0, 25)
-goto(50, 25)
-goto(50, 175)
-rotate(180)
-goto(50, 75)
-goto(0, 75)
-goto(-100, 125)
-goto(-150, 125)
-goto(-150, 25)
-rotate(0)
-goto(-150, 175)
-goto(-2,175)
+print("Time elapsed: ", time.perf_counter() - starttime, " seconds.")
+
+    
 
 

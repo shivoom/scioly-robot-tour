@@ -81,6 +81,7 @@ def linearcontrol(goalx, goaly, goalheading):
     # Combine the two slowdown coefficients together
     linearspeed = 5 + 35*directioncorrect*closeslowdown
     return linearspeed, displacement
+    
 
 def goto(goalx, goaly):
     while True:
