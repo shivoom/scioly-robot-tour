@@ -3,7 +3,7 @@ sleep(2)
 from buildhat import Motor # type: ignore
 from buildhat import MotorPair
 import math
-#import RPi.GPIO as GPIO
+import RPi.GPIO as GPIO
 
 # Right motor is A, Left is B
 motora = Motor('A')
@@ -19,8 +19,8 @@ tspeed = 25
 buttonpin = 37
 done = 0
 
-#GPIO.setmode(GPIO.BOARD) # Numbers GPIOs by physical location
-#GPIO.setup(buttonpin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setmode(GPIO.BOARD) # Numbers GPIOs by physical location
+GPIO.setup(buttonpin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 def right ():
     motora.run_for_rotations(-turningconstant, speed = tspeed, blocking=False)
@@ -52,9 +52,9 @@ def ready (ev=None):
 
 motorready()
 
-#GPIO.add_event_detect(buttonpin, GPIO.FALLING, callback=ready, bouncetime=200)
-#while done == 0:
-#    sleep(1)
+GPIO.add_event_detect(buttonpin, GPIO.FALLING, callback=ready, bouncetime=200)
+while done == 0:
+    sleep(1)
 
 sleep(2) # time to remove hand
 
